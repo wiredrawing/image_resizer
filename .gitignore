@@ -1,0 +1,4 @@
+resized_path/*
+original_path/*
+node_modules/*
+.idea/*
