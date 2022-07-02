@@ -15,6 +15,13 @@ router.get("/resize", [
     check("width").isInt({min:10, max: 1000})
   ],
   function(req, res, next) {
+
+  const errors = validationResult(req);
+  if (errors.isEmpty() !== true) {
+    // バリデーションエラーを配列で取得
+    console.log(errors.array());
+    return res.send("error").end();
+  }
   // リサイズ後のwidth
   let resizedWidth = req.query.width || "100";
   console.log(resizedWidth);
@@ -57,7 +64,6 @@ router.get("/resize", [
             // リサイズ後のファイル保存先
             let resizeFullPath = path.resolve(resizedFilePath, file);
             sharp(fullPath).resize(parseInt(resizedWidth, 10)).toFile(resizeFullPath).then(function(data) {
-
               completedNumber++;
               if ( completedNumber === number ) {
                 resolve(files);
