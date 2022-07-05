@@ -2,4 +2,5 @@
 
 <% files.forEach(function (file, index) { %>
   <p><a href="/image/<%= file %>"><%= file %></a></p>
+  <p><a href="/image/resize/<%= file %>?width=999"><%= file %></a></p>
 <% }) %>

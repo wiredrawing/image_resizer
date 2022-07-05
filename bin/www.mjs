@@ -5,10 +5,13 @@
  */
 
 
-var app = require('../app.js');
-var debug = require('debug')('image-resizer:server');
-var http = require('http');
-
+// var app = require('../app.js');
+// var debug = require('debug')('image-resizer:server');
+// var http = require('http');
+import app  from "../app.mjs";
+import debugObject from "debug"
+let debug = debugObject('image-resizer:server');
+import http from "http"
 /**
  * Get port from environment and store in Express.
  */

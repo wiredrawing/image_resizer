@@ -1,26 +1,30 @@
-const express = require("express");
-const router = express.Router();
-const glob = require("glob");
-const path = require("path")
-const sharp = require("sharp");
-const fs = require("fs");
-const {
-  check,
-  validationResult
-} = require("express-validator");
-// import express from "express";
+// const express = require("express");
 // const router = express.Router();
-// import glob from "glob";
-// import path from "path";
-// import sharp from "sharp";
-// import fs from "fs"
-// import { check, validationResult} from 'express-validator'
-const fileType = require("common-js-file-extensions");
-// import { fileTypeFromBuffer } from 'file-type'
+// const glob = require("glob");
+// const path = require("path")
+// const sharp = require("sharp");
+// const fs = require("fs");
+// const {
+//   check,
+//   validationResult
+// } = require("express-validator");
+
+import express from "express";
+const router = express.Router();
+import glob from "glob";
+import path from "path";
+import sharp from "sharp";
+import fs from "fs"
+import { check, validationResult} from 'express-validator'
+import { fileTypeFromBuffer } from 'file-type'
+
 // 元ファイルの画像パス
-const imageFilePath = path.resolve(__dirname, "../../original_path");
+const dirname = path.dirname(new URL(import.meta.url).pathname).replace("/C:", "")
+const imageFilePath = path.resolve(dirname, "../../original_path");
+// const imageFilePath = path.resolve(__dirname, "../../original_path");
 // リサイズ後の画像パス
-const resizedFilePath = path.resolve(__dirname, "../../resized_path/");
+const resizedFilePath = path.resolve(dirname, "../../resized_path/");
+// const resizedFilePath = path.resolve(__dirname, "../../resized_path/");
 
 // アクセスの度に指定した画像サイズにリサイズさせる
 router.get("/resize/:filename", [
@@ -38,11 +42,13 @@ router.get("/resize/:filename", [
 
   // 画像のりサイズ処理
   sharp(targetFilePath).resize(width).toBuffer().then((data) => {
-    console.log(fileType);
-    // let extension = fileTypeFromBuffer(data);
-    console.log(extension)
-    console.log(data);
-    return res.send(data).end();
+    console.log(fileTypeFromBuffer);
+    let extension = fileTypeFromBuffer(data).then(function(ext) {
+      console.log(ext)
+      console.log(data);
+      res.setHeader("Content-Type", ext.mime);
+      return res.send(data).end();
+    })
   })
 })
 
@@ -68,9 +74,9 @@ router.get("/resize", [
     let resizedWidth = req.query.width || "100";
     // console.log(resizedWidth);
     // 元ファイルの画像パス
-    const imageFilePath = path.resolve(__dirname, "../../original_path");
+    const imageFilePath = path.resolve(dirname, "../../original_path");
     // リサイズ後の画像パス
-    const resizedFilePath = path.resolve(__dirname, "../../resized_path/");
+    const resizedFilePath = path.resolve(dirname, "../../resized_path/");
 
     const readFiles = function() {
       return new Promise(function(resolve, reject) {
@@ -136,9 +142,9 @@ router.get("/resize", [
 router.get("/list", function(req, res, next) {
 
   try {
-    const imageFilePath = path.resolve(__dirname, "../../original_path");
+    const imageFilePath = path.resolve(dirname, "../../original_path");
     // リサイズ後の画像パス
-    const resizedFilePath = path.resolve(__dirname, "../../resized_path/");
+    const resizedFilePath = path.resolve(dirname, "../../resized_path/");
 
     const checkDirectory = function() {
       return new Promise(function(resolve, reject) {
@@ -188,7 +194,7 @@ router.get("/:fileName", [
     return res.send("error").end();
   }
   const fileName = req.params.fileName
-  const originalFilePath = path.resolve(__dirname, "../../original_path");
+  const originalFilePath = path.resolve(dirname, "../../original_path");
   const specifiedFilePath = path.resolve(originalFilePath, fileName);
   // console.log(specifiedFilePath);
   const readFile = function() {
@@ -209,5 +215,5 @@ router.get("/:fileName", [
 
 // export default router;
 
-
-module.exports = router
+export  default  router;
+// module.exports = router
