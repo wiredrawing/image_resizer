@@ -1,7 +1,7 @@
 // https://localhost/image/~のルーティング処理
 const express = require("express");
 const app = express();
-const indexRouter = require("./routes/image/index");
+const indexRouter = require("./routes/image/index.js");
 const path = require("path");
 const fs = require("fs");
 // 画像リサイズツールの事前処理

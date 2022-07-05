@@ -5,12 +5,15 @@
   "scripts": {
     "start": "node ./bin/www"
   },
+  "main": "./bin/www",
   "dependencies": {
+    "common-js-file-extensions": "^1.0.4",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
     "ejs": "~2.6.1",
     "express": "~4.16.1",
     "express-validator": "^6.14.2",
+    "file-type": "^17.1.2",
     "glob": "^8.0.3",
     "http-errors": "~1.6.3",
     "morgan": "~1.9.1",
