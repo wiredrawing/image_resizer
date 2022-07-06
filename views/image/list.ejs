@@ -1,6 +1,13 @@
 
 
 <% files.forEach(function (file, index) { %>
-  <p><a href="/image/<%= file %>"><%= file %></a></p>
-  <p><a href="/image/resize/<%= file %>?width=999"><%= file %></a></p>
+  <div class="image">
+    <p><a href="/image/<%= file %>"><%= file %></a></p>
+    <p><img src="/image/<%= file %>" alt="<%= file %>"></p>
+  </div>
+
+  <div class="image">
+    <p><a href="/image/resize/<%= file %>?width=250"><%= file %></a></p>
+    <p><img src="/image/resize/<%= file %>?width=250" alt="<%= file %>"></p>
+  </div>
 <% }) %>

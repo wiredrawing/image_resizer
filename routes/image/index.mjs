@@ -10,12 +10,13 @@
 // } = require("express-validator");
 
 import express from "express";
+
 const router = express.Router();
 import glob from "glob";
 import path from "path";
 import sharp from "sharp";
 import fs from "fs"
-import { check, validationResult} from 'express-validator'
+import { check, validationResult } from 'express-validator'
 import { fileTypeFromBuffer } from 'file-type'
 
 // 元ファイルの画像パス
@@ -28,10 +29,13 @@ const resizedFilePath = path.resolve(dirname, "../../resized_path/");
 
 // アクセスの度に指定した画像サイズにリサイズさせる
 router.get("/resize/:filename", [
-  check("width").isInt({min: 10, max: 1000}).not().isEmpty(),
-],function (req, res, next) {
+  check("width").isInt({
+    min: 10,
+    max: 1000
+  }).not().isEmpty(),
+], function(req, res, next) {
   const errors = validationResult(req);
-  if (errors.isEmpty() !== true) {
+  if ( errors.isEmpty() !== true ) {
     console.log(errors.array());
     return res.send("error").end();
   }
@@ -41,15 +45,53 @@ router.get("/resize/:filename", [
   let targetFilePath = path.resolve(imageFilePath, filename);
 
   // 画像のりサイズ処理
-  sharp(targetFilePath).resize(width).toBuffer().then((data) => {
-    console.log(fileTypeFromBuffer);
-    let extension = fileTypeFromBuffer(data).then(function(ext) {
-      console.log(ext)
-      console.log(data);
-      res.setHeader("Content-Type", ext.mime);
-      return res.send(data).end();
+  const resize = function() {
+    return new Promise(function(resolve, reject) {
+      sharp(targetFilePath).resize(width).toBuffer().then(function(data) {
+        console.log(typeof data);
+        resolve(data);
+      }).catch(function(error) {
+        reject(error);
+      })
     })
+  }
+  /**
+   * @returns {Promise<void>}
+   */
+  const init = async function() {
+    try {
+      let data = await resize();
+      if ( data instanceof Buffer ) {
+        // バッファ内容からファイルの拡張子を取得する
+        let ext = await fileTypeFromBuffer(data);
+        return {
+          buffer: data,
+          ext: ext,
+        }
+      } else {
+        console.log("Data is not object made by Buffer");
+        return null;
+      }
+    } catch ( error ) {
+      console.log("Something error happened");
+      return null;
+    }
+  }
+  init().then(function(data) {
+    console.log(data);
+    res.setHeader("Content-Type", data.ext.mime);
+    return res.send(data.buffer).end();
   })
+  // (async function () {
+  //   let buf = await resize();
+  // })();
+  // sharp(targetFilePath).resize(width).toBuffer().then((data) => {
+  //   console.log(data.constructor.name)
+  //   fileTypeFromBuffer(data).then(function(ext) {
+  //     res.setHeader("Content-Type", ext.mime);
+  //     return res.send(data).end();
+  //   })
+  // })
 })
 
 /**
@@ -168,7 +210,7 @@ router.get("/list", function(req, res, next) {
     }
 
     // async関数の実行
-    return init().then(function (data) {
+    return init().then(function(data) {
       return res.render("./image/list", {
         files: data,
       });
@@ -215,5 +257,5 @@ router.get("/:fileName", [
 
 // export default router;
 
-export  default  router;
+export default router;
 // module.exports = router
