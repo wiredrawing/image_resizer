@@ -14,10 +14,11 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
 
-import indexRouter from "./routes/index.cjs";
+import indexRouter from "./routes/index.mjs";
 import usersRouter from "./routes/users.cjs";
 
 import appImage from "./app_image.mjs";
+
 var app = express();
 
 // view engine setup
@@ -31,6 +32,24 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(dirname, 'public')));
+
+/**
+ * 画像ファイルの保存先ディレクトリの設定
+ */
+app.use(function (req, res, next) {
+  console.log("middleware の追加")
+  let directoryPath = "default";
+  req.setDirectory = function(path) {
+    // ディレクトリを更新
+    directoryPath = path;
+  };
+  req.getDirectory = function () {
+    // ディレクトリパスを返却
+    console.log("=============")
+    return directoryPath;
+  }
+  return next();
+})
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);

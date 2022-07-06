@@ -1,16 +1,10 @@
 // https://localhost/image/~のルーティング処理
-// const express = require("express");
-// const app = express();
-// const indexRouter = require("./routes/image/index.mjs");
-// const path = require("path");
-// const fs = require("fs");
-
 
 import express from 'express'
-const app = express();
 import indexRouter from "./routes/image/index.mjs";
 import path from "path";
 import fs from "fs"
+const app = express();
 const dirname = path.dirname(new URL(import.meta.url).pathname).replace("/C:", "")
 // 画像リサイズツールの事前処理
 const originalFilePath = path.resolve(dirname, "./original_path");

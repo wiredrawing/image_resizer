@@ -56,7 +56,8 @@ router.get("/resize/:filename", [
     })
   }
   /**
-   * @returns {Promise<void>}
+   *
+   * @returns {Promise<null|{ext: FileTypeResult, buffer: Buffer}>}
    */
   const init = async function() {
     try {
@@ -68,10 +69,10 @@ router.get("/resize/:filename", [
           buffer: data,
           ext: ext,
         }
-      } else {
-        console.log("Data is not object made by Buffer");
-        return null;
+
+
       }
+      return null;
     } catch ( error ) {
       console.log("Something error happened");
       return null;
