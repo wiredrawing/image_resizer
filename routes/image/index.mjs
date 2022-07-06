@@ -79,8 +79,8 @@ router.get("/resize/:filename", [
   }
   init().then(function(data) {
     console.log(data);
-    res.setHeader("Content-Type", data.ext.mime);
-    return res.send(data.buffer).end();
+    res.setHeader("Content-Type", data["ext"].mime);
+    return res.send(data["buffer"]).end();
   })
   // (async function () {
   //   let buf = await resize();
