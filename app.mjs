@@ -33,20 +33,22 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(dirname, 'public')));
 
-/**
- * 画像ファイルの保存先ディレクトリの設定
- */
+// 画像保存先ディレクトリを動的に束縛させる
+// 事前にディレクトリ格納用変数を保持しておく
+let sourcePath = null;
+let destinationPath = null;
 app.use(function (req, res, next) {
-  console.log("middleware の追加")
-  let directoryPath = "default";
+  // ディレクトリのsetter関数
   req.setDirectory = function(path) {
-    // ディレクトリを更新
-    directoryPath = path;
+    sourcePath = path.sourcePath;
+    destinationPath = path.destinationPath;
   };
+  // ディレクトリのgetter関数
   req.getDirectory = function () {
-    // ディレクトリパスを返却
-    console.log("=============")
-    return directoryPath;
+    return {
+      sourcePath: sourcePath,
+      destinationPath: destinationPath,
+    }
   }
   return next();
 })

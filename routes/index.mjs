@@ -15,15 +15,25 @@ router.get('/', function(req, res, next) {
 router.get("/dir", function(req, res, next) {
   return res.render("./dir", {})
 })
-
-/**
- * 画像ディレクトリの確定処理をする
- */
 router.post("/dir", [
-  check("path").not().isEmpty(),
+  check("sourcePath").not().isEmpty(),
+  check("destinationPath").not().isEmpty(),
 ], function(req, res, next) {
-  // ディレクトリを指定
-  req.setDirectory(req.body.path);
-  return res.redirect("/dir");
+
+  const errors = validationResult(req);
+  if (errors.isEmpty() !== true) {
+    console.log(errors.array());
+    return res.send("error").end();
+  }
+  req.setDirectory({
+    sourcePath: req.body.sourcePath,
+    destinationPath: req.body.destinationPath,
+  });
+  return res.render("./dir_completed", {
+    sourcePath: req.body.sourcePath,
+    destinationPath: req.body.destinationPath,
+  })
 })
+
+
 export default router;

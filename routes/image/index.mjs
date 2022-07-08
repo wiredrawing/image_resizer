@@ -1,14 +1,3 @@
-// const express = require("express");
-// const router = express.Router();
-// const glob = require("glob");
-// const path = require("path")
-// const sharp = require("sharp");
-// const fs = require("fs");
-// const {
-//   check,
-//   validationResult
-// } = require("express-validator");
-
 import express from "express";
 
 const router = express.Router();
@@ -21,11 +10,9 @@ import { fileTypeFromBuffer } from 'file-type'
 
 // 元ファイルの画像パス
 const dirname = path.dirname(new URL(import.meta.url).pathname).replace("/C:", "")
-const imageFilePath = path.resolve(dirname, "../../original_path");
-// const imageFilePath = path.resolve(__dirname, "../../original_path");
+let imageFilePath = path.resolve(dirname, "../../original_path");
 // リサイズ後の画像パス
-const resizedFilePath = path.resolve(dirname, "../../resized_path/");
-// const resizedFilePath = path.resolve(__dirname, "../../resized_path/");
+let resizedFilePath = path.resolve(dirname, "../../resized_path/");
 
 // アクセスの度に指定した画像サイズにリサイズさせる
 router.get("/resize/:filename", [
@@ -70,7 +57,6 @@ router.get("/resize/:filename", [
           ext: ext,
         }
 
-
       }
       return null;
     } catch ( error ) {
@@ -83,16 +69,6 @@ router.get("/resize/:filename", [
     res.setHeader("Content-Type", data["ext"].mime);
     return res.send(data["buffer"]).end();
   })
-  // (async function () {
-  //   let buf = await resize();
-  // })();
-  // sharp(targetFilePath).resize(width).toBuffer().then((data) => {
-  //   console.log(data.constructor.name)
-  //   fileTypeFromBuffer(data).then(function(ext) {
-  //     res.setHeader("Content-Type", ext.mime);
-  //     return res.send(data).end();
-  //   })
-  // })
 })
 
 /**
@@ -100,84 +76,92 @@ router.get("/resize/:filename", [
  * リサイズして別名保存する
  */
 router.get("/resize", [
-    check("width").isInt({
-      min: 10,
-      max: 1000
-    })
-  ],
-  function(req, res, next) {
+  check("width").isInt({
+    min: 10,
+    max: 10000
+  }).not().isEmpty()
+], function(req, res, next) {
+  console.log(req.getDirectory());
+  const errors = validationResult(req);
+  if ( errors.isEmpty() !== true ) {
+    return res.send("error").end();
+  }
+  // リサイズ後のwidth
+  let resizedWidth = req.query.width || "100";
 
-    const errors = validationResult(req);
-    if ( errors.isEmpty() !== true ) {
-      // バリデーションエラーを配列で取得
-      // console.log(errors.array());
-      return res.send("error").end();
-    }
-    // リサイズ後のwidth
-    let resizedWidth = req.query.width || "100";
-    // console.log(resizedWidth);
-    // 元ファイルの画像パス
-    const imageFilePath = path.resolve(dirname, "../../original_path");
-    // リサイズ後の画像パス
-    const resizedFilePath = path.resolve(dirname, "../../resized_path/");
-
-    const readFiles = function() {
-      return new Promise(function(resolve, reject) {
-        // console.log(imageFilePath);
-        let options = {
-          // スキャンする基準のディレクトリをcwdプロパティで指定
-          cwd: imageFilePath,
-          // フルパスで取得したい場合は trueに
-          absolute: false,
-        };
-        glob("*.+(jpeg|jpg|png)", options, function(error, files) {
-          if ( error !== null ) {
-            reject(error);
-            return false;
-          }
-          resolve(files);
-          return true;
-        });
+  let setPath = req.getDirectory();
+  // ------------------------------------------------------------------
+  // 元ファイルの画像パス
+  // ------------------------------------------------------------------
+  if ( setPath.sourcePath === null ) {
+    imageFilePath = path.resolve(dirname, "../../original_path");
+  } else {
+    imageFilePath = setPath.sourcePath;
+  }
+  // ------------------------------------------------------------------
+  // リサイズ後の画像パス
+  // ------------------------------------------------------------------
+  if ( setPath.destinationPath === null ) {
+    resizedFilePath = path.resolve(dirname, "../../resized_path/");
+  } else {
+    resizedFilePath = setPath.destinationPath;
+  }
+  const readFiles = function() {
+    return new Promise(function(resolve, reject) {
+      let options = {
+        // スキャンする基準のディレクトリをcwdプロパティで指定
+        cwd: imageFilePath,
+        // フルパスで取得したい場合は trueに
+        absolute: false,
+      };
+      glob("*.+(jpeg|jpg|png)", options, function(error, files) {
+        if ( error !== null ) {
+          reject(error);
+          return false;
+        }
+        resolve(files);
+        return true;
       });
-    }
+    });
+  }
 
-    const resize = async function() {
-      try {
-        let files = await readFiles();
-        let number = files.length;
-        let completedNumber = 0;
-        // 無名関数でawaitする
-        return await (() => {
-          return new Promise(function(resolve, reject) {
-            files.forEach(function(file, index) {
-              // オリジナルファイルのフルパス
-              let fullPath = path.resolve(imageFilePath, file);
-              // リサイズ後のファイル保存先
-              let resizeFullPath = path.resolve(resizedFilePath, file);
-              sharp(fullPath).resize(parseInt(resizedWidth, 10)).toFile(resizeFullPath).then(function(data) {
-                completedNumber++;
-                if ( completedNumber === number ) {
-                  resolve(files);
-                }
-              }).catch(function(error) {
-                // console.log(error);
-              })
+  const resize = async function() {
+    try {
+      let files = await readFiles();
+      let number = files.length;
+      let completedNumber = 0;
+      // 無名関数でawaitする
+      return await (() => {
+        return new Promise(function(resolve, reject) {
+          files.forEach(function(file, index) {
+            // オリジナルファイルのフルパス
+            let fullPath = path.resolve(imageFilePath, file);
+            // リサイズ後のファイル保存先
+            let resizeFullPath = path.resolve(resizedFilePath, file);
+            sharp(fullPath).resize(parseInt(resizedWidth, 10)).toFile(resizeFullPath).then(function(data) {
+              completedNumber++;
+              if ( completedNumber === number ) {
+                resolve(files);
+              }
+            }).catch(function(error) {
+              // console.log(error);
             })
           })
-        })();
-      } catch ( error ) {
-        // console.log(error)
-        return Promise.reject(error);
-      }
+        })
+      })();
+    } catch ( error ) {
+      // console.log(error)
+      return Promise.reject(error);
     }
-    return resize().then(function(data) {
-      // console.log(data);
-      res.write("completed");
-      return res.end();
-    }).catch(function(error) {
-      // console.log(error);
-    })
+  }
+  return resize().then(function(data) {
+    // console.log(data);
+    res.write("completed");
+    return res.end();
+  }).catch(function(error) {
+    // console.log(error);
   })
+})
 
 /**
  * 指定したディレクトリの画像一覧を表示する
