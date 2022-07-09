@@ -4,10 +4,19 @@ import { check, validationResult } from 'express-validator'
 let router = express.Router();
 
 /* GET home page. */
-router.get('/', function(req, res, next) {
-  console.log("ES Module 方式に移行");
-  return res.render('index', { title: 'Express' });
-});
+router.get('/', [
+  check("filename").custom(function(value, obj) {
+    console.log(obj.req.res.redirect("/dir"));
+  }), function(req, res, next) {
+    console.log(2);
+    next();
+  }, function(req, res, next) {
+    console.log(3);
+    console.log("ES Module 方式に移行");
+    return res.render('index', { title: 'Express' });
+  }
+]);
+
 
 /**
  * 画像リサイズをおこなうファイルが含まれているディレクトリを指定
