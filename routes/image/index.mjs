@@ -1,51 +1,43 @@
 import express from "express";
-
-const router = express.Router();
 import glob from "glob";
 import path from "path";
 import sharp from "sharp";
 import fs from "fs"
-import { check, validationResult } from 'express-validator'
+import { check, validationResult, matchedData } from 'express-validator'
 import { fileTypeFromBuffer } from 'file-type'
 
-// 元ファイルの画像パス
+const router = express.Router();
+
+// ファイル自体の物理パス
 const dirname = path.dirname(new URL(import.meta.url).pathname).replace("/C:", "")
-let imageFilePath = path.resolve(dirname, "../../original_path");
-// リサイズ後の画像パス
-let resizedFilePath = path.resolve(dirname, "../../resized_path/");
 
 // アクセスの度に指定した画像サイズにリサイズさせる
 router.get("/resize/:filename", [
   check("width").isInt({
     min: 10,
-    max: 1000
-  }).not().isEmpty(),
+    max: 10000
+  }).not().isEmpty()
 ], function(req, res, next) {
   const errors = validationResult(req);
   if ( errors.isEmpty() !== true ) {
-    console.log(errors.array());
     return res.send("error").end();
   }
+  let directories = req.getDirectory();
   // リサイズサイズを取得
   let width = parseInt(req.query.width);
   let filename = req.params.filename;
-  let targetFilePath = path.resolve(imageFilePath, filename);
+  let targetFilePath = path.resolve(directories.sourcePath, filename);
 
-  // 画像のりサイズ処理
+  // 画像のリサイズ処理
   const resize = function() {
     return new Promise(function(resolve, reject) {
       sharp(targetFilePath).resize(width).toBuffer().then(function(data) {
-        console.log(typeof data);
         resolve(data);
       }).catch(function(error) {
         reject(error);
       })
     })
   }
-  /**
-   *
-   * @returns {Promise<null|{ext: FileTypeResult, buffer: Buffer}>}
-   */
   const init = async function() {
     try {
       let data = await resize();
@@ -56,11 +48,10 @@ router.get("/resize/:filename", [
           buffer: data,
           ext: ext,
         }
-
       }
       return null;
     } catch ( error ) {
-      console.log("Something error happened");
+      console.log(error, "Something error happened");
       return null;
     }
   }
@@ -79,11 +70,34 @@ router.get("/resize", [
   check("width").isInt({
     min: 10,
     max: 10000
+  }).custom((value, {
+    req,
+    location,
+    path
+  }) => {
+    let directories = req.getDirectory();
+    if ( directories.destinationPath === null ) {
+      return Promise.reject("画像パスを正しく設定して下さい");
+    }
+    // customメソッドではかならずtrueを返却する必要がある
+    return true
+  }).custom((value, {
+    req,
+    location,
+    path
+  }) => {
+    let directories = req.getDirectory();
+    console.log(directories);
+    if ( directories.sourcePath === null ) {
+      return Promise.reject("画像パスを正しく設定して下さい");
+    }
+    // customメソッドではかならずtrueを返却する必要がある
+    return true;
   }).not().isEmpty()
 ], function(req, res, next) {
-  console.log(req.getDirectory());
   const errors = validationResult(req);
   if ( errors.isEmpty() !== true ) {
+    console.log(errors.array());
     return res.send("error").end();
   }
   // リサイズ後のwidth
@@ -93,6 +107,7 @@ router.get("/resize", [
   // ------------------------------------------------------------------
   // 元ファイルの画像パス
   // ------------------------------------------------------------------
+  let imageFilePath = null;
   if ( setPath.sourcePath === null ) {
     imageFilePath = path.resolve(dirname, "../../original_path");
   } else {
@@ -101,6 +116,7 @@ router.get("/resize", [
   // ------------------------------------------------------------------
   // リサイズ後の画像パス
   // ------------------------------------------------------------------
+  let resizedFilePath = null;
   if ( setPath.destinationPath === null ) {
     resizedFilePath = path.resolve(dirname, "../../resized_path/");
   } else {
@@ -114,7 +130,7 @@ router.get("/resize", [
         // フルパスで取得したい場合は trueに
         absolute: false,
       };
-      glob("*.+(jpeg|jpg|png)", options, function(error, files) {
+      glob("*.+(jfif|jpeg|jpg|png)", options, function(error, files) {
         if ( error !== null ) {
           reject(error);
           return false;
@@ -127,9 +143,12 @@ router.get("/resize", [
 
   const resize = async function() {
     try {
+      // リサイズ元の画像一覧
       let files = await readFiles();
       let number = files.length;
       let completedNumber = 0;
+      // 変換完了後の画像リスト
+      let filesCompletedConverting = [];
       // 無名関数でawaitする
       return await (() => {
         return new Promise(function(resolve, reject) {
@@ -140,11 +159,15 @@ router.get("/resize", [
             let resizeFullPath = path.resolve(resizedFilePath, file);
             sharp(fullPath).resize(parseInt(resizedWidth, 10)).toFile(resizeFullPath).then(function(data) {
               completedNumber++;
+              filesCompletedConverting.push({
+                before: fullPath,
+                after: resizeFullPath,
+              })
               if ( completedNumber === number ) {
-                resolve(files);
+                resolve(filesCompletedConverting);
               }
             }).catch(function(error) {
-              // console.log(error);
+              console.log(error);
             })
           })
         })
@@ -155,11 +178,12 @@ router.get("/resize", [
     }
   }
   return resize().then(function(data) {
-    // console.log(data);
-    res.write("completed");
-    return res.end();
+    return res.render("./image/completed", {
+      data: data,
+    });
   }).catch(function(error) {
-    // console.log(error);
+    console.log(error);
+    return res.send("Happened some problems.");
   })
 })
 
@@ -167,15 +191,16 @@ router.get("/resize", [
  * 指定したディレクトリの画像一覧を表示する
  */
 router.get("/list", function(req, res, next) {
-
   try {
-    const imageFilePath = path.resolve(dirname, "../../original_path");
-    // リサイズ後の画像パス
-    const resizedFilePath = path.resolve(dirname, "../../resized_path/");
+    console.log(":start");
+    let directories = req.getDirectory();
+    const imageFilePath = directories.sourcePath;
+    const resizedFilePath = directories.destinationPath;
 
     const checkDirectory = function() {
       return new Promise(function(resolve, reject) {
-        glob("*.*", {
+        glob("*.+(jfif|jpeg|jpg|png)", {
+          // globを動作させるための基準のディレクトリ
           cwd: imageFilePath,
         }, function(error, files) {
           if ( error !== null ) {
@@ -203,44 +228,73 @@ router.get("/list", function(req, res, next) {
   } catch ( e ) {
     console.log(e);
   }
-
 })
 
 /**
- * 指定したディレクトリの指定したファイルを表示させる
+ * 指定したオリジナル画像を表示する
  */
 router.get("/:fileName", [
   check("fileName").isLength({
     min: 2,
     max: 1024
   }).not().isEmpty(),
+  check("width").isInt({
+    min: 10,
+    max: 10000,
+  }).optional({
+    nullable: true,
+  })
 ], function(req, res, next) {
-  const errors = validationResult(req);
-  if ( errors.isEmpty() !== true ) {
-    // console.log(errors.array());
-    return res.send("error").end();
-  }
-  const fileName = req.params.fileName
-  const originalFilePath = path.resolve(dirname, "../../original_path");
-  const specifiedFilePath = path.resolve(originalFilePath, fileName);
-  // console.log(specifiedFilePath);
-  const readFile = function() {
-    return new Promise(function(resolve, reject) {
-      fs.readFile(specifiedFilePath, function(error, image) {
-        return resolve(image);
+  try {
+    const requiredData = matchedData(req, {includeOptionals: false});
+    console.log(requiredData);
+    const errors = validationResult(req);
+    if ( errors.isEmpty() !== true ) {
+      console.log(errors.array());
+      return res.send("error").end();
+    }
+    let width = req.query.width || 0;
+    if (width !== 0 ) {
+      width = parseInt(width);
+    }
+    console.log(width);
+
+    const directories = req.getDirectory();
+    const fileName = req.params["fileName"];
+    // リサイズ元
+    const imageFilePath = path.resolve(directories.sourcePath, fileName);
+
+    const readFile = function() {
+      return new Promise(function(resolve, reject) {
+        if ( width > 0 ) {
+          sharp(imageFilePath).resize(width).toBuffer().then(function(data) {
+            console.log(data);
+            return resolve(data);
+          }).catch(function(error) {
+            console.log(error);
+            return reject(error);
+          });
+        } else {
+          fs.readFile(imageFilePath, function(error, image) {
+            if ( error !== null ) {
+              console.log(error);
+              return reject(error)
+            }
+            return resolve(image);
+          })
+        }
       })
-    })
+    }
+    return readFile().then((data) => {
+      res.setHeader("Content-Type", "image/jpeg");
+      return res.send(data).end();
+    }).catch((error) => {
+      console.log(error);
+      return res.send("error").end();
+    });
+  } catch ( error ) {
+    console.log(error);
   }
-  return readFile().then((data) => {
-    // // console.log(data);
-    res.setHeader("Content-Type", "image/jpeg");
-    return res.send(data).end();
-  }).catch((error) => {
-    // console.log(error);
-  });
 });
 
-// export default router;
-
 export default router;
-// module.exports = router

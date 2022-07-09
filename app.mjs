@@ -1,25 +1,13 @@
-// var createError = require('http-errors');
-// var express = require('express');
-// var path = require('path');
-// var cookieParser = require('cookie-parser');
-// var logger = require('morgan');
-//
-// var indexRouter = require('./routes/index.cjs');
-// var usersRouter = require('./routes/users.cjs');
-//
-// let appImage = require("./app_image.mjs");
 import createError from "http-errors";
 import express from "express";
 import path from "path";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
-
-import indexRouter from "./routes/index.mjs";
+import indexRouter from "./routes/index.js";
 import usersRouter from "./routes/users.cjs";
-
 import appImage from "./app_image.mjs";
 
-var app = express();
+const app = express();
 
 // view engine setup
 const dirname = path.dirname(new URL(import.meta.url).pathname).replace("/C:", "")
@@ -37,14 +25,14 @@ app.use(express.static(path.join(dirname, 'public')));
 // 事前にディレクトリ格納用変数を保持しておく
 let sourcePath = null;
 let destinationPath = null;
-app.use(function (req, res, next) {
+app.use(function(req, res, next) {
   // ディレクトリのsetter関数
   req.setDirectory = function(path) {
     sourcePath = path.sourcePath;
     destinationPath = path.destinationPath;
   };
   // ディレクトリのgetter関数
-  req.getDirectory = function () {
+  req.getDirectory = function() {
     return {
       sourcePath: sourcePath,
       destinationPath: destinationPath,
@@ -77,5 +65,5 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
-export  default  app;
+export default app;
 // module.exports = app;

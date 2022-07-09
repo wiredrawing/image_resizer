@@ -22,7 +22,7 @@ router.post("/dir", [
 
   const errors = validationResult(req);
   if (errors.isEmpty() !== true) {
-    console.log(errors.array());
+    console.log("// ---------------------------------------- //");
     return res.send("error").end();
   }
   req.setDirectory({
