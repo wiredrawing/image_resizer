@@ -5,7 +5,7 @@ import sharp from "sharp";
 import fs from "fs"
 import { check, validationResult, matchedData } from 'express-validator'
 import { fileTypeFromBuffer } from 'file-type'
-
+import { validationRules } from '../../config/validations.js'
 const router = express.Router();
 
 // ファイル自体の物理パス
@@ -170,25 +170,19 @@ router.get("/list", [
 /**
  * 指定したオリジナル画像を表示する
  */
-router.get("/:fileName", [
-  check("fileName").isLength({
-    min: 2,
-    max: 1024
-  }).not().isEmpty(),
-  check("width").isInt({
-    min: 10,
-    max: 10000,
-  }).optional({
-    nullable: true,
-  }),
-  check("destinationPath").custom(function(value, obj) {
-    let directories = obj.req.getDirectory();
-    if (directories.destinationPath === null || directories.sourcePath === null) {
-      return obj.req.req.redirect("/dir");
-    }
-    return true;
-  }).optional({nullable: true}),
-], function(req, res, next) {
+router.get("/:fileName", ...[
+  (req, res, next) => {
+    // console.log(req.params);
+    // console.log(req.params.fileName);
+    console.log("1つ目のmiddleware");
+    next();
+  }, (req, res, next) => {
+    // console.log(req.params);
+    // console.log(req.params.fileName);
+    console.log("2つ目のmiddleware");
+    next();
+  }
+], ...validationRules['show.image'], function(req, res, next) {
   try {
     const requiredData = matchedData(req, { includeOptionals: false });
     console.log(requiredData);
