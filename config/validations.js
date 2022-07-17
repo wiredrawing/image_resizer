@@ -23,6 +23,29 @@ let validationRules = {
       }
       return true;
     }).optional({ nullable: true }),
+  ],
+  "register.directory": [
+    check("sourcePath").not().isEmpty(),
+    check("destinationPath").not().isEmpty(),
+  ],
+  "resize.image": [
+    check("width").isInt({
+      min: 10,
+      max: 10000
+    }).custom((value, { req, location, path }) => {
+      let directories = req.getDirectory();
+      if ( directories.destinationPath === null  || directories.sourcePath === null) {
+        return Promise.reject("画像パスを正しく設定して下さい");
+      }
+      // customメソッドではかならずtrueを返却する必要がある
+      return true
+    }).not().isEmpty(),
+  ],
+  "check.load": [
+    check("number").isInt({
+      min: 100,
+      max: 5000,
+    }).not().isEmpty()
   ]
 }
 

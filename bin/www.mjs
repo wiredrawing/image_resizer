@@ -12,26 +12,44 @@ import app  from "../app.mjs";
 import debugObject from "debug"
 let debug = debugObject('image-resizer:server');
 import http from "http"
+import cluster from "cluster";
+import os from "os"
+import { number } from 'sharp/lib/is.js'
+let numberCPUs = os.cpus().length;
+console.log(numberCPUs);
 /**
  * Get port from environment and store in Express.
  */
 
-var port = normalizePort(process.env.PORT || '3000');
-app.set('port', port);
 
-/**
- * Create HTTP server.
- */
+if (cluster.isMaster) {
+  console.log("This is primary process.");
+  // メインプロセスの場合フォークさせる.
+  for(let index = 0; index < numberCPUs; index++) {
+    let forkedCluster = cluster.fork()
+    console.log(forkedCluster);
+  }
+} else {
+  console.log("==============> This is process forked.");
+  console.log(cluster.worker.process.pid);
+  // フォークされたプロセスの場合
+  let port = normalizePort(process.env.PORT || '3000');
+  app.set('port', port);
 
-var server = http.createServer(app);
+  /**
+   * Create HTTP server.
+   */
 
-/**
- * Listen on provided port, on all network interfaces.
- */
+  var server = http.createServer(app);
 
-server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
+  /**
+   * Listen on provided port, on all network interfaces.
+   */
+
+  server.listen(port);
+  server.on('error', onError);
+  server.on('listening', onListening);
+}
 
 /**
  * Normalize a port into a number, string, or false.

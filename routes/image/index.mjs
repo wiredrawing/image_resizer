@@ -6,32 +6,19 @@ import fs from "fs"
 import { check, validationResult, matchedData } from 'express-validator'
 import { fileTypeFromBuffer } from 'file-type'
 import { validationRules } from '../../config/validations.js'
+import cluster from 'cluster';
+
 const router = express.Router();
 
 // ファイル自体の物理パス
 const dirname = path.dirname(new URL(import.meta.url).pathname).replace("/C:", "")
 
 /**
- * 指定したディレクトリ内に存在する画像ファイルすべてを指定の画像サイズに
- * リサイズして別名保存する
+ * 指定したディレクトリ内に存在する画像ファイルすべてを指定の画像サイズにリサイズして別名保存する
+ * 対象画像は指定したディレクトリ全体をリサイズする
  */
-router.get("/resize", [
-  check("width").isInt({
-    min: 10,
-    max: 10000
-  }).custom((value, { req, location, path }) => {
-    let directories = req.getDirectory();
-    if ( directories.destinationPath === null  || directories.sourcePath === null) {
-      return Promise.reject("画像パスを正しく設定して下さい");
-    }
-    // customメソッドではかならずtrueを返却する必要がある
-    return true
-  }).not().isEmpty(),
-], function(req, res, next) {
-  const errors = validationResult(req);
-  if ( errors.isEmpty() !== true ) {
-    return res.send("error").end();
-  }
+router.get("/resize", validationRules["resize.image"], function(req, res, next) {
+  console.log("バリデーション通過後")
   // リサイズ後のwidth
   let resizedWidth = req.query.width || "100";
 
@@ -90,14 +77,18 @@ router.get("/resize", [
             // リサイズ後のファイル保存先
             let resizeFullPath = path.resolve(resizedFilePath, file);
             sharp(fullPath).resize(parseInt(resizedWidth, 10)).toFile(resizeFullPath).then(function(data) {
-              completedNumber++;
-              filesCompletedConverting.push({
-                before: fullPath,
-                after: resizeFullPath,
+              sharp(fullPath).metadata().then(function(metadata) {
+                console.log("Fetched the metadata.");
+                console.log(metadata)
+                completedNumber++;
+                filesCompletedConverting.push({
+                  before: fullPath,
+                  after: resizeFullPath,
+                })
+                if ( completedNumber === number ) {
+                  resolve(filesCompletedConverting);
+                }
               })
-              if ( completedNumber === number ) {
-                resolve(filesCompletedConverting);
-              }
             }).catch(function(error) {
               console.log(error);
             })
@@ -123,15 +114,21 @@ router.get("/resize", [
  * 指定したディレクトリの画像一覧を表示する
  */
 router.get("/list", [
-  check("destinationPath").custom((value, {req, location, res}) => {
+  check("destinationPath").custom((value, {
+    req,
+    location,
+    res
+  }) => {
     let directories = req.getDirectory();
-    if (directories.destinationPath === null || directories.sourcePath === null) {
+    if ( directories.destinationPath === null || directories.sourcePath === null ) {
+      console.log("不正なアクセスです.▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼")
       return req.res.redirect("/dir");
     }
     return true;
   })
 ], function(req, res, next) {
   try {
+    console.log("Current process id is " + cluster.worker.process.pid);
     let directories = req.getDirectory();
     const imageFilePath = directories.sourcePath;
 
@@ -144,7 +141,7 @@ router.get("/list", [
           if ( error !== null ) {
             return reject(error);
           }
-          console.log(files);
+          // console.log(files);
           return resolve(files);
         })
       });
@@ -152,13 +149,14 @@ router.get("/list", [
 
     const init = async function() {
       let files = await checkDirectory()
-      console.log(files);
+      // console.log(files);
       return files;
     }
 
     // async関数の実行
     return init().then(function(data) {
       return res.render("./image/list", {
+        processId: cluster.worker.process.pid,
         files: data,
       });
     });
@@ -170,19 +168,7 @@ router.get("/list", [
 /**
  * 指定したオリジナル画像を表示する
  */
-router.get("/:fileName", ...[
-  (req, res, next) => {
-    // console.log(req.params);
-    // console.log(req.params.fileName);
-    console.log("1つ目のmiddleware");
-    next();
-  }, (req, res, next) => {
-    // console.log(req.params);
-    // console.log(req.params.fileName);
-    console.log("2つ目のmiddleware");
-    next();
-  }
-], ...validationRules['show.image'], function(req, res, next) {
+router.get("/:fileName", validationRules['show.image'], function(req, res, next) {
   try {
     const requiredData = matchedData(req, { includeOptionals: false });
     console.log(requiredData);

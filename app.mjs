@@ -6,6 +6,7 @@ import logger from "morgan";
 import indexRouter from "./routes/index.js";
 import usersRouter from "./routes/users.cjs";
 import appImage from "./app_image.mjs";
+import session from "express-session";
 
 const app = express();
 
@@ -20,7 +21,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(dirname, 'public')));
-
+// Make a session enabled.
+app.use(session({
+  secret: "somethings sercret keys",
+  resave: false,
+  saveUninitialized: true,
+  cookie: {
+    secure: true,
+  }
+}))
 // 画像保存先ディレクトリを動的に束縛させる
 // 事前にディレクトリ格納用変数を保持しておく
 let sourcePath = null;
@@ -46,6 +55,7 @@ app.use('/users', usersRouter);
 
 // ----------------------------------------------------
 // expressアプリケーションを追加でルーティング追加
+// https://image.resizer/image/～
 // ----------------------------------------------------
 app.use(appImage);
 
